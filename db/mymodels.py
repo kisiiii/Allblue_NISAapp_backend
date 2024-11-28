@@ -66,6 +66,7 @@ class NisaAccount(Base):  # NISA口座
     user_id = Column(Integer, ForeignKey("users.user_id"))
     nisa_account_number = Column(String(9), nullable=False)
     nisa_balance = Column(Float)
+    balance_update_datetime = Column(DateTime)  # Added column
 
     user = relationship("User", back_populates="nisa_accounts")
     transactions = relationship(
@@ -89,6 +90,18 @@ class NisaTransaction(Base):  # NISA取引履歴
     nisa_account = relationship("NisaAccount", back_populates="transactions")
     product = relationship("Product", back_populates="transactions")
 
+class NisaHistory(Base):  # NISA評価・取得額履歴
+    __tablename__ = "nisa_history"
+    nisa_history_id = Column(Integer, primary_key=True)
+    nisa_account_id = Column(Integer, ForeignKey("nisa_accounts.nisa_account_id"))
+    user_id = Column(Integer, ForeignKey("users.user_id"))
+    sum_appraised_value = Column(Integer)
+    sum_acquisition_price = Column(Integer)
+    nisa_history_update_date = Column(Date)  # Changed to Date
+
+    nisa_account = relationship("NisaAccount")
+    user = relationship("User")
+
 
 class Product(Base):  # 商品
     __tablename__ = "products"
@@ -97,6 +110,7 @@ class Product(Base):  # 商品
         "product_categories.product_category_id"))
     product_name = Column(String(255), nullable=False)
     unit_price = Column(Float, nullable=False)
+    price_update_datetime = Column(DateTime)  # Added column
 
     category = relationship("ProductCategory", back_populates="products")
     transactions = relationship("NisaTransaction", back_populates="product")
