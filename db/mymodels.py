@@ -1,6 +1,6 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enum, Date
 from sqlalchemy.orm import relationship
-from database import Base, engine
+from .database import Base, engine
 
 
 class Occupation(Base):  # 職業

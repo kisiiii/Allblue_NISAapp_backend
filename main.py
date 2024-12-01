@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from mysql.connector import Error
 
 from db.database import get_db
 # from db.crud import
