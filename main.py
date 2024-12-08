@@ -8,7 +8,6 @@ from db.database import get_db
 # from db.crud import
 # from db.mymodels import
 from db.mymodels import User, NisaAccount, OwnedProduct, Product, NisaTransaction
-from . import models
 from db import crud, mymodels
 
 app = FastAPI()
