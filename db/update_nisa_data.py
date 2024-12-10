@@ -43,7 +43,7 @@ for user_id, product_category_id in user_product_categories.items():
         # NisaTransactionの作成
         nisa_transaction = NisaTransaction(
             nisa_account_id=nisa_account.nisa_account_id,
-            product_id=product.product_id,
+            product_category_id=product_category_id,
             transaction_type='purchase',
             transaction_date=transaction_date,
             transaction_quantity=transaction_quantity,
@@ -55,7 +55,7 @@ for user_id, product_category_id in user_product_categories.items():
         # OwnedProductの更新または作成
         owned_product = session.query(OwnedProduct).filter(
             OwnedProduct.nisa_account_id == nisa_account.nisa_account_id,
-            OwnedProduct.product_id == product_category_id  # product_idをproduct_category_idに変更
+            OwnedProduct.product_category_id == product_category_id
         ).first()
         
         if owned_product:
@@ -64,7 +64,7 @@ for user_id, product_category_id in user_product_categories.items():
         else:
             owned_product = OwnedProduct(
                 nisa_account_id=nisa_account.nisa_account_id,
-                product_id=product_category_id,  # product_idをproduct_category_idに変更
+                product_category_id=product_category_id,
                 quantity=transaction_quantity,
                 acquisition_price=transaction_amount,
                 investment_flag='1'
@@ -87,9 +87,9 @@ for user_id in user_product_categories.keys():
     sum_acquisition_price = 0
     
     for owned_product in owned_products:
-        product_category = session.query(ProductCategory).filter(ProductCategory.product_category_id == owned_product.product_id).first()
+        product_category = session.query(ProductCategory).filter(ProductCategory.product_category_id == owned_product.product_category_id).first()
         if not product_category:
-            print(f"Product category {owned_product.product_id} not found.")
+            print(f"Product category {owned_product.product_category_id} not found.")
             continue
         
         latest_product = session.query(Product).filter(Product.product_category_id == product_category.product_category_id).order_by(Product.price_update_datetime.desc()).first()
