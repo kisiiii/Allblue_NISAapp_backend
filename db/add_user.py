@@ -2,15 +2,15 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
-from mymodels import User, FamilyStructure
-from config import DATABASE_URL
+from .mymodels import User, FamilyStructure
+from .config import DATABASE_URL
 
 # データベース接続の設定
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
 session = SessionLocal()
 
-#一旦ユーザー①111-3333追加
+# 一旦ユーザー①111-3333追加
 # ユーザー情報の作成
 # users = [
 #     {
@@ -85,7 +85,7 @@ session = SessionLocal()
 #         occupation_id=user_data["occupation_id"]
 #     )
 #     session.add(user)
-    
+
 #     family_structure = FamilyStructure(
 #         user_id=user_data["user_id"],
 #         family_structure_type=user_data["family_structure_type"]
