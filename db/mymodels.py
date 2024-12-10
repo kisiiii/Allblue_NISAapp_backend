@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enum, Date
 from sqlalchemy.orm import relationship, declarative_base
-from database import Base, engine
+from .database import Base, engine
 import uuid
 
 # ベースクラスの作成

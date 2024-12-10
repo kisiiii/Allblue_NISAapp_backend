@@ -4,7 +4,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
-from config import DATABASE_URL
+try:
+    from .config import DATABASE_URL #相対インポート
+except ImportError:  
+    from db.config import DATABASE_URL #絶対インポート
 
 engine = create_engine(
     DATABASE_URL,

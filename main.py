@@ -43,52 +43,26 @@ def read_user(user_id: int, db: Session = Depends(get_db)):
     return result
 
 
-class TotalAppraisedValue(BaseModel):  # 資産評価額合計
-    total_appraised_value: float
+class SumAppraisedValue(BaseModel):
+    sum_appraised_value: int
 
+class Income(BaseModel):
+    income: int
 
-@app.get("/total_appraised_value/{user_id}", response_model=TotalAppraisedValue)
-def get_total_appraised_value(user_id: int, db: Session = Depends(get_db)):
-    nisa_account_id = crud.get_nisa_account_id_by_user_id(user_id, db)
-    if not nisa_account_id:
-        raise HTTPException(
-            status_code=404, detail="NISA account not found for the given user_id")
+@app.get("/balance/{user_id}", response_model=SumAppraisedValue)
+def get_balance(user_id: int, db: Session = Depends(get_db)):
+    result = crud.get_sum_appraised_value(user_id, db)
+    if result is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    print(f"Debug: {result}")  # デバッグ用に追加
+    return SumAppraisedValue(sum_appraised_value=result[0])
 
-    total_appraised_value = crud.calculate_total_appraised_value(
-        nisa_account_id, db)
-    return TotalAppraisedValue(total_appraised_value=total_appraised_value)
-
-
-class TotalAcquisitionValue(BaseModel):  # 取得額合計
-    total_acquisition_value: float
-
-
-@app.get("/total_acquisition_value/{user_id}", response_model=TotalAcquisitionValue)
-def get_total_acquisition_value(user_id: int, db: Session = Depends(get_db)):
-    nisa_account_id = crud.get_nisa_account_id_by_user_id(user_id, db)
-    if not nisa_account_id:
-        raise HTTPException(
-            status_code=404, detail="NISA account not found for the given user_id")
-
-    total_acquisition_value = crud.calculate_total_acquisition_value(
-        nisa_account_id, db)
-    return TotalAcquisitionValue(total_acquisition_value=total_acquisition_value)
-
-
-class ProfitAmount(BaseModel):  # 運用益額
-    profit_amount: float
-
-
-@app.get("/profit_amount/{user_id}", response_model=ProfitAmount)
-def get_profit_amount(user_id: int, db: Session = Depends(get_db)):
-    nisa_account_id = crud.get_nisa_account_id_by_user_id(user_id, db)
-    if not nisa_account_id:
-        raise HTTPException(
-            status_code=404, detail="NISA account not found for the given user_id")
-
-    profit_amount = crud.calculate_profit_amount(nisa_account_id, db)
-    return ProfitAmount(profit_amount=profit_amount)
-
+@app.get("/income/{user_id}", response_model=Income)
+def get_income(user_id: int, db: Session = Depends(get_db)):
+    income = crud.get_income(user_id, db)
+    if income is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return Income(income=income)
 
 class ProfitRate(BaseModel):  # 運用益率
     profit_rate: float
