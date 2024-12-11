@@ -1,5 +1,5 @@
 from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update, delete, func
 from sqlalchemy.exc import IntegrityError
 from .database import engine
 from .mymodels import NisaAccount, OwnedProduct, Product, NisaTransaction, NisaHistory, User, FamilyStructure
@@ -107,3 +107,76 @@ def get_income(user_id: int, db: Session):
     if result:
         return result.sum_appraised_value - result.sum_acquisition_price
     return None
+
+def get_personal_ranking(db: Session, user_id: int):
+    # ユーザーの最古の更新日を取得
+    oldest_date = db.query(func.min(NisaHistory.nisa_history_update_date)).filter(NisaHistory.user_id == user_id).scalar()
+
+    # 同じ最古の更新日を持つユーザーを取得
+    users_with_oldest_date = db.query(NisaHistory.user_id).filter(NisaHistory.nisa_history_update_date == oldest_date).all()
+    user_ids = [user.user_id for user in users_with_oldest_date]
+
+    # 各ユーザーの最新のsum_appraised_value / sum_acquisition_priceを計算
+    rankings = []
+    for uid in user_ids:
+        latest_record = db.query(NisaHistory).filter(NisaHistory.user_id == uid).order_by(NisaHistory.nisa_history_update_date.desc()).first()
+        if latest_record and latest_record.sum_acquisition_price > 0:
+            ratio = latest_record.sum_appraised_value / latest_record.sum_acquisition_price
+            rankings.append((uid, ratio))
+
+    # ランキングをソート
+    rankings.sort(key=lambda x: x[1], reverse=True)
+
+    # ユーザーのランキングを見つける
+    my_ranking = next((index for index, value in enumerate(rankings) if value[0] == user_id), None)
+
+    # 上位10％のユーザーを計算
+    top_10_percent_count = max(1, len(rankings) // 10)
+    top_10_percent_users = rankings[:top_10_percent_count]
+
+    return {
+        "myRanking": my_ranking + 1 if my_ranking is not None else None,
+        "parameter": len(rankings),
+        "top10PercentUsers": top_10_percent_users
+    }
+
+def get_ranking_data(db: Session, user_id: int):
+    # 個人ランキング関数から上位10％のユーザーを取得
+    personal_ranking = get_personal_ranking(db, user_id)
+    top_10_percent_users = [user[0] for user in personal_ranking["top10PercentUsers"]]
+
+    # 上位10％のユーザーの保有商品を集計
+    product_quantities = db.query(
+        OwnedProduct.product_category_id,
+        func.sum(OwnedProduct.quantity).label('total_quantity')
+    ).filter(OwnedProduct.nisa_account_id.in_(
+        db.query(NisaAccount.nisa_account_id).filter(NisaAccount.user_id.in_(top_10_percent_users))
+    )).group_by(OwnedProduct.product_category_id).all()
+
+    # 各商品の価値を計算
+    product_values = []
+    for product in product_quantities:
+        latest_price = db.query(Product.unit_price).filter(Product.product_category_id == product.product_category_id).order_by(Product.price_update_datetime.desc()).first()
+        previous_price = db.query(Product.unit_price).filter(Product.product_category_id == product.product_category_id).order_by(Product.price_update_datetime.desc()).offset(1).first()
+        if latest_price:
+            value = product.total_quantity * latest_price[0]
+            product_values.append((product.product_category_id, value, latest_price[0], previous_price[0] if previous_price else 0))
+
+    # 価値で商品をソートし、上位5位を取得
+    product_values.sort(key=lambda x: x[1], reverse=True)
+    top_5_products = product_values[:5]
+
+    # 商品の詳細を取得
+    ranking_data = []
+    for product in top_5_products:
+        product_details = db.query(Product).filter(Product.product_category_id == product[0]).first()
+        if product_details:
+            price_difference = product[2] - product[3]
+            ranking_data.append({
+                "rank": top_5_products.index(product) + 1,
+                "product_name": product_details.product_name,
+                "current_unit_price": product[2],
+                "price_difference": price_difference
+            })
+
+    return ranking_data
