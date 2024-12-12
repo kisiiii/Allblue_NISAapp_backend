@@ -12,4 +12,4 @@ PASSWORD = os.environ["PASSWORD"]
 SERVER_PORT = os.environ["SERVER_PORT"]
 SSL_CA_PATH = os.environ["SSL_CA_PATH"]
 
-DATABASE_URL = f"mysql+pymysql://{USER_NAME}:{PASSWORD}@{SERVER_URL}:{SERVER_PORT}/{DATABASE}?charset=utf8&ssl_ca={SSL_CA_PATH}"
+DATABASE_URL = f"mysql+pymysql://{USER_NAME}:{PASSWORD}@{SERVER_URL}:{SERVER_PORT}/{DATABASE}?charset=utf8mb4&ssl_ca={SSL_CA_PATH}"

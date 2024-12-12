@@ -1,8 +1,10 @@
 from fastapi import FastAPI, Depends, Query, HTTPException ,Response
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import json
 
 from db.database import get_db
 # from db.crud import
@@ -71,4 +73,4 @@ def get_personal_ranking(user_id: int, db: Session = Depends(get_db)):
 @app.get("/ranking-data/{user_id}")
 def get_ranking_data(user_id: int, db: Session = Depends(get_db)):
     data = crud.get_ranking_data(db, user_id)
-    return Response(content=json.dumps(data), media_type="application/json", headers={"Cache-Control": "no-store"})
+    return JSONResponse(content=data, media_type="application/json; charset=utf-8", headers={"Cache-Control": "no-store"})
