@@ -7,7 +7,7 @@ from sqlalchemy.ext.declarative import declarative_base
 try:
     from .config import DATABASE_URL #相対インポート
 except ImportError:  
-    from db.config import DATABASE_URL #絶対インポート
+    from config import DATABASE_URL #絶対インポート
 
 engine = create_engine(
     DATABASE_URL,

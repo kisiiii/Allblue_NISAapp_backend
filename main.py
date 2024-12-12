@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, Query, HTTPException
+from fastapi import FastAPI, Depends, Query, HTTPException ,Response
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 from fastapi.middleware.cors import CORSMiddleware
@@ -70,4 +70,5 @@ def get_personal_ranking(user_id: int, db: Session = Depends(get_db)):
 
 @app.get("/ranking-data/{user_id}")
 def get_ranking_data(user_id: int, db: Session = Depends(get_db)):
-    return crud.get_ranking_data(db, user_id)
+    data = crud.get_ranking_data(db, user_id)
+    return Response(content=json.dumps(data), media_type="application/json", headers={"Cache-Control": "no-store"})

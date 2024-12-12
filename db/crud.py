@@ -174,9 +174,9 @@ def get_ranking_data(db: Session, user_id: int):
             price_difference = product[2] - product[3]
             ranking_data.append({
                 "rank": top_5_products.index(product) + 1,
-                "product_name": product_details.product_name,
-                "current_unit_price": product[2],
-                "price_difference": price_difference
+                "fundName": product_details.product_name,
+                "price": product[2],
+                "priceChange": price_difference
             })
 
     return ranking_data
