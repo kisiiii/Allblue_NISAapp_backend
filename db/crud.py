@@ -1,5 +1,5 @@
 from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy import select, update, delete, func
+from sqlalchemy import select, update, delete, func, extract
 from sqlalchemy.exc import IntegrityError
 from .database import engine
 from .mymodels import NisaAccount, OwnedProduct, Product, NisaTransaction, NisaHistory, User, FamilyStructure
@@ -108,6 +108,84 @@ def get_income(user_id: int, db: Session):
     if result:
         return result.sum_appraised_value - result.sum_acquisition_price
     return None
+
+def fetch_investment_data(year: int, db: Session):
+    start_date = f"{year}-01-01"
+    end_date = f"{year}-12-31"
+
+    tsumitate_amount = db.query(func.sum(NisaTransaction.transaction_amount)).filter(
+        NisaTransaction.investment_flag == '1',
+        NisaTransaction.transaction_type == 'purchase',
+        NisaTransaction.transaction_date.between(start_date, end_date)
+    ).scalar()
+
+    seicho_amount = db.query(func.sum(NisaTransaction.transaction_amount)).filter(
+        NisaTransaction.investment_flag == '2',
+        NisaTransaction.transaction_type == 'purchase',
+        NisaTransaction.transaction_date.between(start_date, end_date)
+    ).scalar()
+
+    return [
+        {"type": "つみたて投資枠", "amount": tsumitate_amount or 0, "total": "1,200,000"},
+        {"type": "成長投資枠", "amount": seicho_amount or 0, "total": "2,400,000"}
+    ]
+
+def fetch_asset_transition_data(db: Session):
+    labels = []
+    dataset1 = []
+    dataset2 = []
+
+    for i in range(13):
+        date = datetime.now() - timedelta(days=i*30)
+        label = date.strftime("%Y/%m")
+        labels.append(label)
+
+        sum_appraised_value = db.query(func.sum(NisaHistory.sum_appraised_value)).filter(
+            extract('year', NisaHistory.nisa_history_update_date) == date.year,
+            extract('month', NisaHistory.nisa_history_update_date) == date.month
+        ).scalar()
+
+        sum_acquisition_price = db.query(func.sum(NisaHistory.sum_acquisition_price)).filter(
+            extract('year', NisaHistory.nisa_history_update_date) == date.year,
+            extract('month', NisaHistory.nisa_history_update_date) == date.month
+        ).scalar()
+
+        dataset1.append(sum_appraised_value or 0)
+        dataset2.append(sum_acquisition_price or 0)
+
+    labels.reverse()
+    dataset1.reverse()
+    dataset2.reverse()
+
+    return {"labels": labels, "dataset1": dataset1, "dataset2": dataset2}
+
+def fetch_fund_data(db: Session):
+    funds = db.query(OwnedProduct, Product).join(Product, OwnedProduct.product_category_id == Product.product_category_id).all()
+    fund_data = []
+
+    for owned_product, product in funds:
+        # 最新のtransaction_amountを取得
+        latest_transaction = db.query(NisaTransaction).filter(
+            NisaTransaction.product_category_id == product.product_category_id,
+            NisaTransaction.investment_flag == '1'
+        ).order_by(NisaTransaction.transaction_date.desc()).first()
+
+        amount = latest_transaction.transaction_amount if latest_transaction else 0
+
+        # profitLossの計算
+        latest_unit_price = db.query(Product.unit_price).filter(
+            Product.product_id == product.product_id
+        ).order_by(Product.price_update_datetime.desc()).first()
+
+        profit_loss = (owned_product.quantity * latest_unit_price[0]) - owned_product.acquisition_price if latest_unit_price else 0
+
+        fund_data.append({
+            "name": product.product_name,
+            "amount": amount if latest_transaction else 0,
+            "profitLoss": profit_loss
+        })
+
+    return fund_data
 
 def get_personal_ranking(db: Session, user_id: int):
     # ユーザーの最古の更新日を取得

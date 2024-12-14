@@ -50,7 +50,7 @@ class SumAppraisedValue(BaseModel):
 
 class Income(BaseModel):
     income: int
-
+#homeページ
 @app.get("/balance/{user_id}", response_model=SumAppraisedValue)
 def get_balance(user_id: int, db: Session = Depends(get_db)):
     result = crud.get_sum_appraised_value(user_id, db)
@@ -66,6 +66,19 @@ def get_income(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
     return Income(income=income)
 
+@app.get("/investment-data")
+def read_investment_data(year: int, db: Session = Depends(get_db)):
+    return crud.fetch_investment_data(year, db)
+
+@app.get("/asset-transition-data")
+def read_asset_transition_data(db: Session = Depends(get_db)):
+    return crud.fetch_asset_transition_data(db)
+
+@app.get("/fund-data")
+def read_fund_data(db: Session = Depends(get_db)):
+    return crud.fetch_fund_data(db)
+
+#personal-rankingページ
 @app.get("/personal-ranking/{user_id}")
 def get_personal_ranking(user_id: int, db: Session = Depends(get_db)):
     return crud.get_personal_ranking(db, user_id)
@@ -75,6 +88,7 @@ def get_ranking_data(user_id: int, db: Session = Depends(get_db)):
     data = crud.get_ranking_data(db, user_id)
     return JSONResponse(content=data, media_type="application/json; charset=utf-8", headers={"Cache-Control": "no-store"})
 
+#produt-rankingページ
 @app.get("/product-ranking/{user_id}")
 def get_product_ranking(
     user_id: str,
