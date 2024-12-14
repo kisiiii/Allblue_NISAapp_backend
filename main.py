@@ -74,3 +74,18 @@ def get_personal_ranking(user_id: int, db: Session = Depends(get_db)):
 def get_ranking_data(user_id: int, db: Session = Depends(get_db)):
     data = crud.get_ranking_data(db, user_id)
     return JSONResponse(content=data, media_type="application/json; charset=utf-8", headers={"Cache-Control": "no-store"})
+
+@app.get("/product-ranking/{user_id}")
+def get_product_ranking(
+    user_id: str,
+    investment_flag: int = Query(..., description="Investment flag (1 or 2)"),
+    age_group: bool = Query(False),
+    annual_income: bool = Query(False),
+    family_structure_type: bool = Query(False),
+    investment_amount: bool = Query(False),
+    db: Session = Depends(get_db)
+):
+    ranking = crud.get_product_ranking(user_id, investment_flag, age_group, annual_income, family_structure_type, investment_amount, db)
+    if not ranking:
+        raise HTTPException(status_code=404, detail="Ranking not found")
+    return ranking

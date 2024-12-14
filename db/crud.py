@@ -4,6 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from .database import engine
 from .mymodels import NisaAccount, OwnedProduct, Product, NisaTransaction, NisaHistory, User, FamilyStructure
 import pandas as pd
+from datetime import datetime, timedelta
 
 def myinsert(mymodel, values):
     Session = sessionmaker(bind=engine)
@@ -180,3 +181,62 @@ def get_ranking_data(db: Session, user_id: int):
             })
 
     return ranking_data
+
+def calculate_age(birthday):
+    today = datetime.today()
+    return today.year - birthday.year - ((today.month, today.day) < (birthday.month, birthday.day))
+
+#nisa_accountを探すコード
+def get_nisa_account_ids(user_id: int, db: Session):
+    nisa_accounts = db.query(NisaAccount).filter(NisaAccount.user_id == user_id).all()
+    return [account.nisa_account_id for account in nisa_accounts]
+
+def get_owned_products_by_user_id(user_id: int, db: Session):
+    owned_products = db.query(OwnedProduct).filter(OwnedProduct.user_id == user_id).all()
+    return owned_products
+
+def get_product_ranking(user_id: int, investment_flag: int, age_group: bool, annual_income: bool, family_structure_type: bool, investment_amount: bool, db: Session):
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if not user:
+        return None
+
+    filters = [OwnedProduct.investment_flag == investment_flag]
+    if age_group:
+        age = calculate_age(user.birthday)
+        age_group_filter = f"{age // 10 * 10}代"
+        filters.append(User.birthday.between(datetime.today() - timedelta(days=int(age_group_filter[:-1]) * 365 + 3650), datetime.today() - timedelta(days=int(age_group_filter[:-1]) * 365)))
+    if annual_income:
+        filters.append(FamilyStructure.annual_income == user.family_structures[0].annual_income)
+    if family_structure_type:
+        filters.append(FamilyStructure.family_structure_type == user.family_structures[0].family_structure_type)
+    if investment_amount:
+        latest_transaction = db.query(NisaTransaction).join(NisaAccount).filter(NisaAccount.user_id == user_id).order_by(NisaTransaction.transaction_date.desc()).first()
+        if latest_transaction:
+            filters.append(NisaTransaction.transaction_amount == latest_transaction.transaction_amount)
+
+    filtered_users = db.query(User).join(FamilyStructure, User.user_id == FamilyStructure.user_id).filter(*filters).all()
+
+    product_quantities = {}
+    for user in filtered_users:
+        owned_products = get_owned_products_by_user_id(user.user_id, db)
+        for product in owned_products:
+            if product.product_category_id not in product_quantities:
+                product_quantities[product.product_category_id] = 0
+            product_quantities[product.product_category_id] += product.quantity
+
+    ranking = []
+    for product_category_id, quantity in product_quantities.items():
+        product = db.query(Product).filter(Product.product_category_id == product_category_id).order_by(Product.price_update_datetime.desc()).first()
+        if product:
+            previous_product = db.query(Product).filter(Product.product_category_id == product_category_id).order_by(Product.price_update_datetime.desc()).offset(1).first()
+            price_change = product.unit_price - (previous_product.unit_price if previous_product else 0)
+            ranking.append({
+                "rank": len(ranking) + 1,
+                "fundName": product.product_name,
+                "price": product.unit_price,
+                "priceChange": price_change
+            })
+
+    ranking = sorted(ranking, key=lambda x: x["price"], reverse=True)[:5]
+
+    return ranking
