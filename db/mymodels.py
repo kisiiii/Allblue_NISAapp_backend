@@ -1,6 +1,9 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enum, Date
 from sqlalchemy.orm import relationship, declarative_base
-from .database import Base, engine
+try:
+    from .database import Base, engine # 相対インポートを試みる
+except ImportError:
+    from database import Base, engine # 相対インポートが失敗した場合、絶対インポートを試みる
 import uuid
 
 # ベースクラスの作成
