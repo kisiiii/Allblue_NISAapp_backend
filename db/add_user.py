@@ -1,9 +1,12 @@
+import sys
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime
-from .mymodels import User, FamilyStructure
-from .config import DATABASE_URL
+from datetime import datetime, timedelta
+from faker import Faker
+import random
+from mymodels import User, FamilyStructure, OwnedProduct, NisaAccount, NisaTransaction, NisaHistory, Product, Occupation
+from config import DATABASE_URL
 
 # データベース接続の設定
 engine = create_engine(DATABASE_URL)
@@ -106,3 +109,124 @@ session = SessionLocal()
 
 # # セッションを閉じる
 # session.close()
+
+#追加で1人足してみる
+
+# Fakerインスタンスの作成
+fake = Faker('ja_JP')
+
+# 既存のユーザーID「1000」の取引を追加する
+user_id = 1000
+
+# 既存のユーザーを取得
+user = session.query(User).filter_by(user_id=user_id).first()
+if not user:
+    print(f"User with ID {user_id} does not exist.")
+    sys.exit()
+
+# 既存のproductsテーブルの情報を使用
+products = session.query(Product).all()
+
+# 既存のNISA口座を取得
+existing_nisa_accounts = {account.user_id: account for account in session.query(NisaAccount).all()}
+
+# 既存のowned_product_idを取得
+existing_owned_product_ids = {product.owned_product_id for product in session.query(OwnedProduct.owned_product_id).all()}
+
+# 所有商品の生成（既存のユーザーID「1000」）
+owned_products = []
+if user.user_id not in existing_nisa_accounts:
+    nisa_account = NisaAccount(
+        nisa_account_id=random.randint(1000, 9999),
+        user_id=user.user_id,
+        nisa_account_number=fake.bban()[:9],  # nisa_account_numberの長さを修正
+        nisa_balance=round(random.uniform(100000, 500000), 2),
+        balance_update_datetime=datetime.now(),
+        investment_flag='1'
+    )
+    session.add(nisa_account)
+    session.commit()
+    existing_nisa_accounts[user.user_id] = nisa_account
+
+for _ in range(2):  # 各ユーザーが2つの商品を購入
+    owned_product_id = random.randint(1000, 99999)  # ID範囲を拡大して重複を避ける
+    while owned_product_id in existing_owned_product_ids:
+        owned_product_id = random.randint(1000, 99999)  # ID範囲を拡大して重複を避ける
+    existing_owned_product_ids.add(owned_product_id)
+
+    owned_product = OwnedProduct(
+        owned_product_id=owned_product_id,
+        nisa_account_id=existing_nisa_accounts[user.user_id].nisa_account_id,
+        product_category_id=random.randint(1, 9),
+        quantity=0.0,  # 初期値を0に設定
+        acquisition_price=0.0,  # 初期値を0に設定
+        investment_flag='1',
+        user_id=user.user_id
+    )
+    owned_products.append(owned_product)
+
+# データベースに挿入
+session.bulk_save_objects(owned_products)
+session.commit()
+
+# NISA取引履歴の生成（既存のユーザーID「1000」）
+nisa_transactions = []
+nisa_histories = []
+
+# 各ユーザーごとに1年間、2年間、3年間のどれかを選択
+years_of_transactions = random.choice([1, 2, 3])
+transaction_amount = random.choice([10000, 20000, 30000])
+
+for month in range(years_of_transactions * 12):  # 過去1年間、2年間、3年間毎月取引を行う
+    transaction_date = datetime.now() - timedelta(days=30 * month)
+    
+    for owned_product in [op for op in owned_products if op.user_id == user.user_id]:
+        product_category_id = owned_product.product_category_id
+        product = next((p for p in products if p.product_category_id == product_category_id), None)
+        unit_price = product.unit_price if product else None
+        transaction_quantity = transaction_amount / unit_price if unit_price else 0
+
+        # ランダムなnisa_transaction_idを生成し、重複を避ける
+        nisa_transaction_id = random.randint(1000, 99999)
+        while session.query(NisaTransaction).filter_by(nisa_transaction_id=nisa_transaction_id).first() is not None:
+            nisa_transaction_id = random.randint(1000, 99999)
+
+        nisa_transaction = NisaTransaction(
+            nisa_transaction_id=nisa_transaction_id,
+            nisa_account_id=existing_nisa_accounts[user.user_id].nisa_account_id,
+            product_category_id=product_category_id,
+            transaction_type='purchase',
+            transaction_date=transaction_date,
+            transaction_quantity=round(transaction_quantity, 2),
+            transaction_amount=transaction_amount,
+            investment_flag='1'
+        )
+        nisa_transactions.append(nisa_transaction)
+
+        # 所有商品の更新
+        owned_product.quantity += round(transaction_quantity, 2)
+        owned_product.acquisition_price += transaction_amount
+
+        # NISA評価・取得額履歴の更新
+        nisa_history_update_date = transaction_date.date()
+        sum_appraised_value = sum(
+            [p.product.unit_price * p.quantity for p in owned_products if p.user_id == user.user_id and p.product is not None]
+        )
+        sum_acquisition_price = sum([p.acquisition_price for p in owned_products if p.user_id == user.user_id])
+
+        nisa_history = NisaHistory(
+            nisa_history_id=random.randint(1000, 99999),  # ID範囲を拡大して重複を避ける
+            nisa_account_id=existing_nisa_accounts[user.user_id].nisa_account_id,
+            user_id=user.user_id,
+            sum_appraised_value=sum_appraised_value,
+            sum_acquisition_price=sum_acquisition_price,
+            nisa_history_update_date=nisa_history_update_date
+        )
+        nisa_histories.append(nisa_history)
+
+# データベースに挿入
+session.bulk_save_objects(nisa_transactions)
+session.bulk_save_objects(nisa_histories)
+session.commit()
+
+print(f"User ID {user.user_id} の取引情報をデータベースに追加しました。")

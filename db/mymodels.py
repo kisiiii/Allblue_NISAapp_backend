@@ -3,7 +3,7 @@ from sqlalchemy.orm import relationship, declarative_base
 try:
     from .database import Base, engine # 相対インポートを試みる
 except ImportError:
-    from database import Base, engine # 相対インポートが失敗した場合、絶対インポートを試みる
+    from database import Base, engine
 import uuid
 
 # ベースクラスの作成
