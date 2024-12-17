@@ -71,9 +71,9 @@ def get_income(user_id: int, db: Session = Depends(get_db)):
     return Income(income=income)
 
 
-@app.get("/investment-data")
-def read_investment_data(year: int, db: Session = Depends(get_db)):
-    return crud.fetch_investment_data(year, db)
+@app.get("/investment-data/{user_id}")
+def read_investment_data(user_id: int, year: int, db: Session = Depends(get_db)):
+    return crud.fetch_investment_data(user_id, year, db)
 
 
 @app.get("/asset-transition-data/{user_id}")

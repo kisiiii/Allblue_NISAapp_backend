@@ -120,22 +120,38 @@ def get_income(user_id: int, db: Session):
     return None
 
 
-def fetch_investment_data(year: int, db: Session):
+def fetch_investment_data(user_id: int, year: int, db: Session):
     start_date = f"{year}-01-01"
     end_date = f"{year}-12-31"
 
+    # user_idに基づきnisa_account_idを取得
+    nisa_account_ids = db.query(NisaAccount.nisa_account_id).filter(
+        NisaAccount.user_id == user_id
+    ).order_by(NisaAccount.nisa_account_id).all()
+
+    # リストに変換
+    nisa_account_ids = [account[0] for account in nisa_account_ids]
+
+    if not nisa_account_ids:
+        return {"message": "No NISA accounts found for this user"}
+
+    # つみたて投資枠の合計金額
     tsumitate_amount = db.query(func.sum(NisaTransaction.transaction_amount)).filter(
+        NisaTransaction.nisa_account_id.in_(nisa_account_ids),
         NisaTransaction.investment_flag == '1',
         NisaTransaction.transaction_type == 'purchase',
         NisaTransaction.transaction_date.between(start_date, end_date)
     ).scalar()
 
+    # 成長投資枠の合計金額
     seicho_amount = db.query(func.sum(NisaTransaction.transaction_amount)).filter(
+        NisaTransaction.nisa_account_id.in_(nisa_account_ids),
         NisaTransaction.investment_flag == '2',
         NisaTransaction.transaction_type == 'purchase',
         NisaTransaction.transaction_date.between(start_date, end_date)
     ).scalar()
 
+    # 結果を返す
     return [
         {"type": "つみたて投資枠", "amount": tsumitate_amount or 0, "total": "1,200,000"},
         {"type": "成長投資枠", "amount": seicho_amount or 0, "total": "2,400,000"}

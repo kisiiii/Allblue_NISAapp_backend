@@ -110,7 +110,7 @@ session = SessionLocal()
 # # セッションを閉じる
 # session.close()
 
-#追加で1人足してみる
+# 追加で1人足してみる
 
 # Fakerインスタンスの作成
 fake = Faker('ja_JP')
@@ -128,10 +128,12 @@ if not user:
 products = session.query(Product).all()
 
 # 既存のNISA口座を取得
-existing_nisa_accounts = {account.user_id: account for account in session.query(NisaAccount).all()}
+existing_nisa_accounts = {
+    account.user_id: account for account in session.query(NisaAccount).all()}
 
 # 既存のowned_product_idを取得
-existing_owned_product_ids = {product.owned_product_id for product in session.query(OwnedProduct.owned_product_id).all()}
+existing_owned_product_ids = {product.owned_product_id for product in session.query(
+    OwnedProduct.owned_product_id).all()}
 
 # 所有商品の生成（既存のユーザーID「1000」）
 owned_products = []
@@ -179,10 +181,11 @@ transaction_amount = random.choice([10000, 20000, 30000])
 
 for month in range(years_of_transactions * 12):  # 過去1年間、2年間、3年間毎月取引を行う
     transaction_date = datetime.now() - timedelta(days=30 * month)
-    
+
     for owned_product in [op for op in owned_products if op.user_id == user.user_id]:
         product_category_id = owned_product.product_category_id
-        product = next((p for p in products if p.product_category_id == product_category_id), None)
+        product = next(
+            (p for p in products if p.product_category_id == product_category_id), None)
         unit_price = product.unit_price if product else None
         transaction_quantity = transaction_amount / unit_price if unit_price else 0
 
@@ -210,9 +213,11 @@ for month in range(years_of_transactions * 12):  # 過去1年間、2年間、3�
         # NISA評価・取得額履歴の更新
         nisa_history_update_date = transaction_date.date()
         sum_appraised_value = sum(
-            [p.product.unit_price * p.quantity for p in owned_products if p.user_id == user.user_id and p.product is not None]
+            [p.product.unit_price * p.quantity for p in owned_products if p.user_id ==
+                user.user_id and p.product is not None]
         )
-        sum_acquisition_price = sum([p.acquisition_price for p in owned_products if p.user_id == user.user_id])
+        sum_acquisition_price = sum(
+            [p.acquisition_price for p in owned_products if p.user_id == user.user_id])
 
         nisa_history = NisaHistory(
             nisa_history_id=random.randint(1000, 99999),  # ID範囲を拡大して重複を避ける
