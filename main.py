@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, Query, HTTPException ,Response
+from fastapi import FastAPI, Depends, Query, HTTPException, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
@@ -48,9 +48,12 @@ def read_user(user_id: int, db: Session = Depends(get_db)):
 class SumAppraisedValue(BaseModel):
     sum_appraised_value: int
 
+
 class Income(BaseModel):
     income: int
-#homeページ
+# homeページ
+
+
 @app.get("/balance/{user_id}", response_model=SumAppraisedValue)
 def get_balance(user_id: int, db: Session = Depends(get_db)):
     result = crud.get_sum_appraised_value(user_id, db)
@@ -59,6 +62,7 @@ def get_balance(user_id: int, db: Session = Depends(get_db)):
     print(f"Debug: {result}")  # デバッグ用に追加
     return SumAppraisedValue(sum_appraised_value=result[0])
 
+
 @app.get("/income/{user_id}", response_model=Income)
 def get_income(user_id: int, db: Session = Depends(get_db)):
     income = crud.get_income(user_id, db)
@@ -66,29 +70,37 @@ def get_income(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
     return Income(income=income)
 
+
 @app.get("/investment-data")
 def read_investment_data(year: int, db: Session = Depends(get_db)):
     return crud.fetch_investment_data(year, db)
 
-@app.get("/asset-transition-data")
-def read_asset_transition_data(db: Session = Depends(get_db)):
-    return crud.fetch_asset_transition_data(db)
+
+@app.get("/asset-transition-data/{user_id}")
+def read_asset_transition_data(user_id: int, db: Session = Depends(get_db)):
+    return crud.fetch_asset_transition_data(db, user_id)
+
 
 @app.get("/fund-data")
 def read_fund_data(db: Session = Depends(get_db)):
     return crud.fetch_fund_data(db)
 
-#personal-rankingページ
+# personal-rankingページ
+
+
 @app.get("/personal-ranking/{user_id}")
 def get_personal_ranking(user_id: int, db: Session = Depends(get_db)):
     return crud.get_personal_ranking(db, user_id)
+
 
 @app.get("/ranking-data/{user_id}")
 def get_ranking_data(user_id: int, db: Session = Depends(get_db)):
     data = crud.get_ranking_data(db, user_id)
     return JSONResponse(content=data, media_type="application/json; charset=utf-8", headers={"Cache-Control": "no-store"})
 
-#produt-rankingページ
+# produt-rankingページ
+
+
 @app.get("/product-ranking/{user_id}")
 def get_product_ranking(
     user_id: str,
@@ -99,7 +111,8 @@ def get_product_ranking(
     investment_amount: bool = Query(False),
     db: Session = Depends(get_db)
 ):
-    ranking = crud.get_product_ranking(user_id, investment_flag, age_group, annual_income, family_structure_type, investment_amount, db)
+    ranking = crud.get_product_ranking(
+        user_id, investment_flag, age_group, annual_income, family_structure_type, investment_amount, db)
     if not ranking:
         raise HTTPException(status_code=404, detail="Ranking not found")
     return ranking
