@@ -1,5 +1,5 @@
 from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy import select, update, delete, func, extract
+from sqlalchemy import select, update, delete, func, extract, desc
 from sqlalchemy.exc import IntegrityError
 from .database import engine
 from .mymodels import NisaAccount, OwnedProduct, Product, NisaTransaction, NisaHistory, User, FamilyStructure
@@ -203,32 +203,39 @@ def fetch_asset_transition_data(db: Session, user_id: int):
     return {"labels": labels, "dataset1": dataset1, "dataset2": dataset2}
 
 
-def fetch_fund_data(db: Session):
-    funds = db.query(OwnedProduct, Product).join(
-        Product, OwnedProduct.product_category_id == Product.product_category_id).all()
+def fetch_fund_data_by_user(db: Session, user_id: int):
     fund_data = []
 
-    for owned_product, product in funds:
-        # 最新のtransaction_amountを取得
-        latest_transaction = db.query(NisaTransaction).filter(
-            NisaTransaction.product_category_id == product.product_category_id,
-            NisaTransaction.investment_flag == '1'
-        ).order_by(NisaTransaction.transaction_date.desc()).first()
+    # 1. OwnedProductテーブルからユーザーの保有商品データを取得
+    owned_products = db.query(OwnedProduct).filter(
+        OwnedProduct.user_id == user_id,
+        OwnedProduct.quantity != None,  # NULLデータを除外
+        OwnedProduct.quantity > 0       # 0以下のデータを除外
+    ).all()
 
-        amount = latest_transaction.transaction_amount if latest_transaction else 0
+    # 2. Productテーブルから最新の単価情報を取得し、データを組み立てる
+    for owned_product in owned_products:
+        # 最新の単価 (unit_price) を取得
+        latest_product = db.query(Product).filter(
+            Product.product_category_id == owned_product.product_category_id
+        ).order_by(desc(Product.price_update_datetime)).first()
 
-        # profitLossの計算
-        latest_unit_price = db.query(Product.unit_price).filter(
-            Product.product_id == product.product_id
-        ).order_by(Product.price_update_datetime.desc()).first()
+        if not latest_product:
+            continue  # 該当する商品がない場合はスキップ
 
-        profit_loss = (owned_product.quantity *
-                       latest_unit_price[0]) - owned_product.acquisition_price if latest_unit_price else 0
+        unit_price = latest_product.unit_price
 
+        # 保有数量と最新単価で合計金額を計算
+        total_value = owned_product.quantity * unit_price
+
+        # 利益損失額を計算: 合計金額 - 取得価格
+        profit_loss = total_value - owned_product.acquisition_price
+
+        # fund_dataリストにデータを格納
         fund_data.append({
-            "name": product.product_name,
-            "amount": amount if latest_transaction else 0,
-            "profitLoss": profit_loss
+            "name": latest_product.product_name,  # 商品名
+            "amount": total_value,               # 評価額
+            "profitLoss": profit_loss            # 損益額
         })
 
     return fund_data
@@ -274,6 +281,7 @@ def get_personal_ranking(db: Session, user_id: int):
         "parameter": len(rankings),
         "top10PercentUsers": top_10_percent_users
     }
+
 
 def get_ranking_data(db: Session, user_id: int):
     # 個人ランキング関数から上位10％のユーザーを取得

@@ -81,9 +81,9 @@ def read_asset_transition_data(user_id: int, db: Session = Depends(get_db)):
     return crud.fetch_asset_transition_data(db, user_id)
 
 
-@app.get("/fund-data")
-def read_fund_data(db: Session = Depends(get_db)):
-    return crud.fetch_fund_data(db)
+@app.get("/fund-data/{user_id}")
+def read_fund_data(user_id: int, db: Session = Depends(get_db)):
+    return crud.fetch_fund_data_by_user(db, user_id)
 
 # personal-rankingページ
 
