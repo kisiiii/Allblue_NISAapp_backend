@@ -383,12 +383,16 @@ def get_product_ranking(user_id: int, investment_flag: int, age_group: bool, ann
             price_change = product.unit_price - \
                 (previous_product.unit_price if previous_product else 0)
             ranking.append({
-                "rank": len(ranking) + 1,
                 "fundName": product.product_name,
                 "price": product.unit_price,
                 "priceChange": price_change
             })
 
+    # 価格に基づいてデータをソートし、上位5件を取得
     ranking = sorted(ranking, key=lambda x: x["price"], reverse=True)[:5]
+
+    # ランクを再計算
+    for i, item in enumerate(ranking):
+        item["rank"] = i + 1
 
     return ranking
