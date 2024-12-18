@@ -107,14 +107,15 @@ def mydelete(mymodel, user_id):
 
 def get_sum_appraised_value(user_id: int, db: Session):
     result = db.query(NisaHistory.sum_appraised_value).filter(
-        NisaHistory.user_id == user_id).first()
+        NisaHistory.user_id == user_id
+    ).order_by(NisaHistory.nisa_history_update_date.desc()).first()
     print(f"Debug: {result}")  # デバッグ用に追加
     return result
 
-
 def get_income(user_id: int, db: Session):
     result = db.query(NisaHistory.sum_appraised_value, NisaHistory.sum_acquisition_price).filter(
-        NisaHistory.user_id == user_id).first()
+        NisaHistory.user_id == user_id
+    ).order_by(NisaHistory.nisa_history_update_date.desc()).first()
     if result:
         return result.sum_appraised_value - result.sum_acquisition_price
     return None
