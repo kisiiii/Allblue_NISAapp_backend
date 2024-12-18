@@ -241,7 +241,6 @@ def fetch_fund_data_by_user(db: Session, user_id: int):
 
     return fund_data
 
-
 def get_personal_ranking(db: Session, user_id: int):
     # ユーザーの最古の更新日を取得
     oldest_date = db.query(func.min(NisaHistory.nisa_history_update_date)).filter(
@@ -254,7 +253,7 @@ def get_personal_ranking(db: Session, user_id: int):
     # 前後3か月以内の更新日を持つユーザーを取得
     users_with_oldest_date = db.query(NisaHistory.user_id).filter(
         NisaHistory.nisa_history_update_date.between(start_date, end_date)
-    ).all()
+    ).distinct().all()
     user_ids = [user.user_id for user in users_with_oldest_date]
 
     # 各ユーザーの最新のsum_appraised_value / sum_acquisition_priceを計算
@@ -282,7 +281,6 @@ def get_personal_ranking(db: Session, user_id: int):
         "parameter": len(rankings),
         "top10PercentUsers": top_10_percent_users
     }
-
 
 def get_ranking_data(db: Session, user_id: int):
     # 個人ランキング関数から上位10％のユーザーを取得
